@@ -10,7 +10,13 @@ import (
 
 	"go.viam.com/rdk/data"
 	"go.viam.com/rdk/logging"
+	"go.viam.com/rdk/resource"
 )
+
+var family = resource.ModelNamespace("erh").WithFamily("viamseakeeper")
+
+var Model = family.WithModel("seakeeper")
+
 
 type Status struct {
 	BatteryVoltage float64 `json:"battery_voltage"`
@@ -21,7 +27,9 @@ type Status struct {
 
 	DriveTemperature string `json:"drive_temperature"`
 
-	StabstabilizeEnabled float64 `json:"stabilize_enabled"`
+	ProgressBar float64 `json:"progress_bar_percentage"`
+	
+	StabilizeEnabled float64 `json:"stabilize_enabled"`
 	StabilizeAvailable bool `json:"stabilize_available"`
 	PowerAvailable float64 `json:"power_available"`
 	PowerEnabled float64 `json:"power_enabled"`
@@ -87,33 +95,69 @@ func (s *Seakeeper) Power(on bool) error {
 	if err != nil {
 		return err
 	}
-	if s.lastStatusParsed.PowerEnabled > 0 {
+	if on && s.lastStatusParsed.PowerEnabled > 0 {
 		return nil
 	}
 	if on && s.lastStatusParsed.PowerAvailable < 1 {
 		return fmt.Errorf("trying to turn power on and not available")
 
 	}
-	panic(1)
+
+	m := map[string]interface{}{}
+	if on {
+		m["power"] = 1.0
+	} else {
+		m["power"] = 0.0
+	}
+	return s.sendRequest(m)
 }
 
+//  var textR = '{"stabilize":1}';
 func (s *Seakeeper) Enable(on bool) error {
 	err := tooOld(nil, s.lastStatusTime)
 	if err != nil {
 		return err
 	}
-	if s.lastStatusParsed.StabstabilizeEnabled > 0 {
+	if on && s.lastStatusParsed.StabilizeEnabled > 0 {
 		return nil
 	}
 	if on && !s.lastStatusParsed.StabilizeAvailable {
 		return fmt.Errorf("trying to enable on and not available")
 
 	}
-	panic(1)
+
+	m := map[string]interface{}{}
+	if on {
+		m["stabilize"] = 1.0
+	} else {
+		m["stabilize"] = 0.0
+	}
+	return s.sendRequest(m)
+
+}
+
+func (s *Seakeeper) sendRequest(m map[string]interface{}) error {
+	if s.client == nil {
+		return fmt.Errorf("no client")
+	}
+	b, err := json.Marshal(m)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("yo %v\n", string(b))
+	token := s.client.Publish("seakeeper/request/1", 0, false, string(b))
+	if !token.WaitTimeout(time.Second * 30) {
+		return fmt.Errorf("timed out sending request %v", m)
+	}
+	return token.Error()
 }
 
 func (s *Seakeeper) LastStatus() Status {
 	return s.lastStatusParsed
+}
+
+func (s *Seakeeper) LastStatusTime() time.Time {
+	return s.lastStatusTime
 }
 
 func (s *Seakeeper) Readings(ctx context.Context, extra map[string]interface{}) (map[string]interface{}, error) {
