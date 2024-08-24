@@ -9,7 +9,7 @@ import (
 	"github.com/eclipse/paho.mqtt.golang"
 
 	"go.viam.com/rdk/logging"
-	
+
 	"github.com/erh/viamseakeeper"
 )
 
@@ -19,7 +19,7 @@ var f mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Message) {
 }
 
 func main() {
-	
+
 	err := mainReal()
 	if err != nil {
 		panic(err)
@@ -38,8 +38,7 @@ func mainReal() error {
 	flag.BoolVar(&enable, "enable", false, "")
 	flag.BoolVar(&onFlag, "on", false, "")
 	flag.BoolVar(&offFlag, "off", false, "")
-	
-	
+
 	flag.Parse()
 
 	if power || enable {
@@ -50,14 +49,14 @@ func mainReal() error {
 			return fmt.Errorf("need to specify on or off")
 		}
 	}
-	
+
 	logger := logging.NewDebugLogger("seakeeper")
 	s, err := viamseakeeper.NewSeakeeper(host, logger)
 	if err != nil {
 		return err
 	}
 	defer s.Close(context.Background())
-	
+
 	err = s.Start()
 	if err != nil {
 		return err
@@ -84,7 +83,7 @@ func mainReal() error {
 			return err
 		}
 		doAnother = true
-	}		
+	}
 
 	if doAnother {
 		time.Sleep(1 * time.Second)
@@ -93,4 +92,3 @@ func mainReal() error {
 
 	return nil
 }
-

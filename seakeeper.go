@@ -8,6 +8,7 @@ import (
 
 	"github.com/eclipse/paho.mqtt.golang"
 
+	"go.viam.com/rdk/components/sensor"
 	"go.viam.com/rdk/data"
 	"go.viam.com/rdk/logging"
 	"go.viam.com/rdk/resource"
@@ -17,22 +18,46 @@ var family = resource.ModelNamespace("erh").WithFamily("viamseakeeper")
 
 var Model = family.WithModel("seakeeper")
 
+func init() {
+	resource.RegisterComponent(
+		sensor.API,
+		Model,
+		resource.Registration[sensor.Sensor, resource.NoNativeConfig]{
+			Constructor: newSeakeeperSensor,
+		})
+}
+
+func newSeakeeperSensor(ctx context.Context, deps resource.Dependencies, config resource.Config, logger logging.Logger) (sensor.Sensor, error) {
+	host := config.Attributes.String("host")
+	if host == "" {
+		return nil, fmt.Errorf("need to specify host")
+	}
+
+	s, err := NewSeakeeper(host, logger)
+	if err != nil {
+		return nil, err
+	}
+
+	s.name = config.ResourceName()
+
+	return s, nil
+}
 
 type Status struct {
 	BatteryVoltage float64 `json:"battery_voltage"`
-	BoatRollAngle float64 `json:"boat_roll_angle"`
-	SeaHours float64 `json:"sea_hours"`
-	
+	BoatRollAngle  float64 `json:"boat_roll_angle"`
+	SeaHours       float64 `json:"sea_hours"`
+
 	DriveCurrent float64 `json:"drive_current"`
 
 	DriveTemperature string `json:"drive_temperature"`
 
 	ProgressBar float64 `json:"progress_bar_percentage"`
-	
-	StabilizeEnabled float64 `json:"stabilize_enabled"`
-	StabilizeAvailable bool `json:"stabilize_available"`
-	PowerAvailable float64 `json:"power_available"`
-	PowerEnabled float64 `json:"power_enabled"`
+
+	StabilizeEnabled   float64 `json:"stabilize_enabled"`
+	StabilizeAvailable bool    `json:"stabilize_available"`
+	PowerAvailable     float64 `json:"power_available"`
+	PowerEnabled       float64 `json:"power_enabled"`
 }
 
 func NewSeakeeper(host string, logger logging.Logger) (*Seakeeper, error) {
@@ -42,16 +67,19 @@ func NewSeakeeper(host string, logger logging.Logger) (*Seakeeper, error) {
 }
 
 type Seakeeper struct {
-	host string
+	resource.AlwaysRebuild
+
+	name resource.Name
+
+	host   string
 	logger logging.Logger
-	
+
 	client mqtt.Client
 
-	lastStatus map[string]interface{}
+	lastStatus       map[string]interface{}
 	lastStatusParsed Status
-	lastStatusTime time.Time
+	lastStatusTime   time.Time
 }
-
 
 // Not thread safe
 func (s *Seakeeper) Start() error {
@@ -61,7 +89,7 @@ func (s *Seakeeper) Start() error {
 
 	//mqtt.DEBUG = s.logger
 	//mqtt.ERROR = s.logger
-	
+
 	opts := mqtt.NewClientOptions().AddBroker(fmt.Sprintf("ws://%s:9001", s.host))
 	opts.SetAutoReconnect(true)
 
@@ -80,7 +108,7 @@ func (s *Seakeeper) Start() error {
 		s.lastStatusParsed = sp
 		s.lastStatusTime = time.Now()
 	}
-	
+
 	if token := s.client.Subscribe("seakeeper/status/1", 0, f); token.Wait() && token.Error() != nil {
 		s.client.Disconnect(0)
 		s.client = nil
@@ -112,7 +140,7 @@ func (s *Seakeeper) Power(on bool) error {
 	return s.sendRequest(m)
 }
 
-//  var textR = '{"stabilize":1}';
+// var textR = '{"stabilize":1}';
 func (s *Seakeeper) Enable(on bool) error {
 	err := tooOld(nil, s.lastStatusTime)
 	if err != nil {
@@ -174,6 +202,14 @@ func (s *Seakeeper) Close(ctx context.Context) error {
 		s.client = nil
 	}
 	return nil
+}
+
+func (s *Seakeeper) DoCommand(ctx context.Context, cmd map[string]interface{}) (map[string]interface{}, error) {
+	return map[string]interface{}{}, nil
+}
+
+func (s *Seakeeper) Name() resource.Name {
+	return s.name
 }
 
 func decodeMessage(b []byte) (Status, map[string]interface{}, error) {
