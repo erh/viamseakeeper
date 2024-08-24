@@ -40,6 +40,11 @@ func newSeakeeperSensor(ctx context.Context, deps resource.Dependencies, config 
 
 	s.name = config.ResourceName()
 
+	err = s.Start()
+	if err != nil {
+		return nil, err
+	}
+
 	return s, nil
 }
 
@@ -81,6 +86,18 @@ type Seakeeper struct {
 	lastStatusTime   time.Time
 }
 
+type myLogAdapter struct {
+	logger logging.Logger
+}
+
+func (l *myLogAdapter) Println(v ...interface{}) {
+	l.logger.Error(v...)
+}
+
+func (l *myLogAdapter) Printf(format string, v ...interface{}) {
+	l.logger.Errorf(format, v...)
+}
+
 // Not thread safe
 func (s *Seakeeper) Start() error {
 	if s.client != nil {
@@ -88,7 +105,7 @@ func (s *Seakeeper) Start() error {
 	}
 
 	//mqtt.DEBUG = s.logger
-	//mqtt.ERROR = s.logger
+	mqtt.ERROR = &myLogAdapter{s.logger}
 
 	opts := mqtt.NewClientOptions().AddBroker(fmt.Sprintf("ws://%s:9001", s.host))
 	opts.SetAutoReconnect(true)
