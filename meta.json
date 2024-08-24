@@ -10,5 +10,13 @@
             "model": "erh:viamseakeeper:seakeeper"
         }
     ],
-    "entrypoint": "./bin/viamseakeepermodule"
+    "entrypoint": "./bin/viamseakeepermodule",
+    "build": {
+        "build": "make module",
+        "arch": [
+            "linux/amd64",
+            "linux/arm64"
+        ],
+        "path" : "module.tar.gz"
+    }
 }
