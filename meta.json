@@ -1,14 +1,14 @@
 {
-  "$schema": "https://dl.viam.dev/module.schema.json",
-  "module_id": "erh:viamseakeeper",
-  "visibility": "private",
-  "url": "",
-  "description": "",
-  "models": [
-    {
-      "api": "rdk:component:sensor",
-      "model": "erh:viamseakeeper:seakeeper"
-    }
-  ],
-  "entrypoint": ""
+    "$schema": "https://dl.viam.dev/module.schema.json",
+    "module_id": "erh:viamseakeeper",
+    "visibility": "public",
+    "url": "https://github.com/erh/viamseakeeper",
+    "description": "viam module for interacting with seakeeper",
+    "models": [
+        {
+            "api": "rdk:component:sensor",
+            "model": "erh:viamseakeeper:seakeeper"
+        }
+    ],
+    "entrypoint": "./bin/viamseakeepermodule"
 }
