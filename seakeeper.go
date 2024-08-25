@@ -222,7 +222,25 @@ func (s *Seakeeper) Close(ctx context.Context) error {
 }
 
 func (s *Seakeeper) DoCommand(ctx context.Context, cmd map[string]interface{}) (map[string]interface{}, error) {
-	return map[string]interface{}{}, nil
+	on, ok := cmd["power"].(bool)
+	if ok {
+		err := s.Power(on)
+		if err != nil {
+			return nil, err
+		}
+		return nil, nil
+	}
+
+	on, ok = cmd["enable"].(bool)
+	if ok {
+		err := s.Enable(on)
+		if err != nil {
+			return nil, err
+		}
+		return nil, nil
+	}
+
+	return nil, fmt.Errorf("unknown command")
 }
 
 func (s *Seakeeper) Name() resource.Name {
