@@ -104,16 +104,16 @@ func (s *Seakeeper) Start() error {
 		return nil
 	}
 
-	//mqtt.DEBUG = s.logger
+	//mqtt.DEBUG = &myLogAdapter{s.logger}
+	mqtt.WARN = &myLogAdapter{s.logger}
 	mqtt.ERROR = &myLogAdapter{s.logger}
+	mqtt.CRITICAL = &myLogAdapter{s.logger}
 
 	opts := mqtt.NewClientOptions().AddBroker(fmt.Sprintf("ws://%s:9001", s.host))
 	opts.SetAutoReconnect(true)
-
-	s.client = mqtt.NewClient(opts)
-	if token := s.client.Connect(); token.Wait() && token.Error() != nil {
-		return token.Error()
-	}
+	opts.SetMaxReconnectInterval(10 * time.Second)
+	opts.SetPingTimeout(10 * time.Second)
+	opts.SetKeepAlive(10 * time.Second)
 
 	f := func(client mqtt.Client, msg mqtt.Message) {
 		sp, m, err := decodeMessage(msg.Payload())
@@ -126,9 +126,17 @@ func (s *Seakeeper) Start() error {
 		s.lastStatusTime = time.Now()
 	}
 
-	if token := s.client.Subscribe("seakeeper/status/1", 0, f); token.Wait() && token.Error() != nil {
-		s.client.Disconnect(0)
-		s.client = nil
+	opts.SetOnConnectHandler(func(client mqtt.Client) {
+		token := client.Subscribe("seakeeper/status/1", 0, f)
+		token.Wait()
+		err := token.Error()
+		if err != nil {
+			s.logger.Errorf("cannot subscribe: %v", err)
+		}
+	})
+
+	s.client = mqtt.NewClient(opts)
+	if token := s.client.Connect(); token.Wait() && token.Error() != nil {
 		return token.Error()
 	}
 

@@ -33,11 +33,13 @@ func mainReal() error {
 	enable := false
 	onFlag := false
 	offFlag := false
+	numTimes := 1
 	flag.StringVar(&host, "host", "", "host of the seakeeper")
 	flag.BoolVar(&power, "power", false, "")
 	flag.BoolVar(&enable, "enable", false, "")
 	flag.BoolVar(&onFlag, "on", false, "")
 	flag.BoolVar(&offFlag, "off", false, "")
+	flag.IntVar(&numTimes, "n", 1, "")
 
 	flag.Parse()
 
@@ -68,26 +70,24 @@ func mainReal() error {
 	}
 	fmt.Printf("%#v\n", s.LastStatus())
 
-	doAnother := false
-
 	if power {
 		err = s.Power(onFlag)
 		if err != nil {
 			return err
 		}
-		doAnother = true
+		numTimes++
 	}
 	if enable {
 		err = s.Enable(onFlag)
 		if err != nil {
 			return err
 		}
-		doAnother = true
+		numTimes++
 	}
 
-	if doAnother {
+	for i := 1; i < numTimes; i++ {
 		time.Sleep(1 * time.Second)
-		fmt.Printf("%#v\n", s.LastStatus())
+		fmt.Printf("%v \t %#v\n", time.Since(s.LastStatusTime()), s.LastStatus())
 	}
 
 	return nil
