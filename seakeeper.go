@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/eclipse/paho.mqtt.golang"
+	"github.com/grandcat/zeroconf"
 
 	"go.viam.com/rdk/components/sensor"
 	"go.viam.com/rdk/data"
@@ -33,7 +34,7 @@ func newSeakeeperSensor(ctx context.Context, deps resource.Dependencies, config 
 		return nil, fmt.Errorf("need to specify host")
 	}
 
-	s, err := NewSeakeeper(host, logger)
+	s, err := NewSeakeeper(ctx, host, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +66,48 @@ type Status struct {
 	PowerEnabled       float64 `json:"power_enabled"`
 }
 
-func NewSeakeeper(host string, logger logging.Logger) (*Seakeeper, error) {
+func findHost(logger logging.Logger) (string, error) {
+	resolver, err := zeroconf.NewResolver(nil)
+	if err != nil {
+		return "", fmt.Errorf("Failed to initialize resolver: %v", err)
+	}
+
+	newHost := ""
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
+	defer cancel()
+
+	entries := make(chan *zeroconf.ServiceEntry)
+	go func(results <-chan *zeroconf.ServiceEntry) {
+		for entry := range results {
+			newHost = entry.HostName
+			logger.Debugf("found host %v", entry)
+			cancel()
+		}
+	}(entries)
+
+	err = resolver.Browse(ctx, "_seakeeper-gyro-mqtt._tcp", "local.", entries)
+	if err != nil {
+		return "", fmt.Errorf("Failed to browse: %v", err)
+	}
+
+	<-ctx.Done()
+
+	if newHost == "" {
+		return "", fmt.Errorf("couldn't find seakeeper")
+	}
+	return newHost, nil
+}
+
+func NewSeakeeper(ctx context.Context, host string, logger logging.Logger) (*Seakeeper, error) {
+	if host == "" || host == "FIND" || host == "find" {
+		newHost, err := findHost(logger)
+		if err != nil {
+			return nil, err
+		}
+		logger.Infof("found seakeeper @ %v", newHost)
+		host = newHost
+	}
 	s := &Seakeeper{host: host, logger: logger}
 
 	return s, nil

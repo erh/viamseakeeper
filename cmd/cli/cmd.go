@@ -27,6 +27,7 @@ func main() {
 }
 
 func mainReal() error {
+	ctx := context.Background()
 
 	host := ""
 	power := false
@@ -52,12 +53,12 @@ func mainReal() error {
 		}
 	}
 
-	logger := logging.NewDebugLogger("seakeeper")
-	s, err := viamseakeeper.NewSeakeeper(host, logger)
+	logger := logging.NewDebugLogger("seakeeper-cli")
+	s, err := viamseakeeper.NewSeakeeper(ctx, host, logger)
 	if err != nil {
 		return err
 	}
-	defer s.Close(context.Background())
+	defer s.Close(ctx)
 
 	err = s.Start()
 	if err != nil {
