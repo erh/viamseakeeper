@@ -290,7 +290,8 @@ func (s *Seakeeper) DoCommand(ctx context.Context, cmd map[string]interface{}) (
 		return nil, nil
 	}
 
-	return nil, fmt.Errorf("unknown command")
+	s.logger.Infof("bad command to seakeeper %v", cmd)
+	return nil, fmt.Errorf("unknown command %v", cmd)
 }
 
 func (s *Seakeeper) Name() resource.Name {
