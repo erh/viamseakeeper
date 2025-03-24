@@ -231,6 +231,11 @@ func (s *Seakeeper) Enable(on bool) error {
 
 }
 
+func (s *Seakeeper) SetFlywheelSpeed(speed int) error {
+	// Publishing Message: Topic:  seakeeper/request/1 . QoS: 0. Message:  {"flywheel_speed":0}
+	return s.sendRequest(map[string]interface{}{"flywheel_speed": speed})
+}
+
 func (s *Seakeeper) sendRequest(m map[string]interface{}) error {
 	if s.client == nil {
 		return fmt.Errorf("no client")
@@ -284,6 +289,15 @@ func (s *Seakeeper) DoCommand(ctx context.Context, cmd map[string]interface{}) (
 	on, ok = cmd["enable"].(bool)
 	if ok {
 		err := s.Enable(on)
+		if err != nil {
+			return nil, err
+		}
+		return nil, nil
+	}
+
+	speed, ok := cmd["speed"].(int)
+	if ok {
+		err := s.SetFlywheelSpeed(speed)
 		if err != nil {
 			return nil, err
 		}
