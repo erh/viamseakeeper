@@ -13,6 +13,8 @@ import (
 	"go.viam.com/rdk/data"
 	"go.viam.com/rdk/logging"
 	"go.viam.com/rdk/resource"
+
+	"github.com/erh/vmodutils"
 )
 
 var family = resource.ModelNamespace("erh").WithFamily("viamseakeeper")
@@ -295,7 +297,7 @@ func (s *Seakeeper) DoCommand(ctx context.Context, cmd map[string]interface{}) (
 		return nil, nil
 	}
 
-	speed, ok := cmd["speed"].(int)
+	speed, ok := vmodutils.GetIntFromMap(cmd, "speed")
 	if ok {
 		err := s.SetFlywheelSpeed(speed)
 		if err != nil {
